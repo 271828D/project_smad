@@ -1,0 +1,12 @@
+# wandb sweep sweep.yaml
+
+program: .\Training.py
+method: random
+#metric:
+#  name: validation_loss
+#  goal: minimize
+parameters:
+  learning_rate:
+    values: [.003,.0003,.00003, .000003,.0000003]
+  batch_size:
+    values: [32]

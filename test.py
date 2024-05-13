@@ -42,6 +42,15 @@ class_num = params.class_num
 lr = params.lr
 model = params.model
 augmentation = params.augmentation
+
+print('dataset path:', data_dir, '\r')
+print('num-epochs:', num_epochs, '\r')
+print('batch_size:', batch_size, '\r')
+print('img_size:', img_size, '\r')
+print('class num:', class_num, '\r')
+print('lr:', lr, '\r')
+print('model:', model, '\r')
+print('augmentation:', augmentation, '\r')
 #########################################################
 if th.cuda.is_available():
   device = "cuda:0"
@@ -55,7 +64,7 @@ else:
 # TO DO: 
 # agregar tres opciones de augmentations: soft, medium, hard
 train_path = os.path.join(data_dir, "train")
-val_path = os.path.join(data_dir, "validation")
+validation_path = os.path.join(data_dir, "validation")
 test_path = os.path.join(data_dir, "test")
 
 if augmentation == "soft":
@@ -74,32 +83,50 @@ else:
                         # transforms.PILToTensor()
                         ])
 
-train_data = ImageFolder(root=data_dir, transform=transf, 
-                #    is_valid_file = checkImage
-                   )
+try: 
+   if os.path.exists(train_path):
+    train_data = ImageFolder(root=train_path, transform=transf, 
+                        #    is_valid_file = checkImage
+                        )
+except:
+   raise Exception("The train path doesn't exist")
+try: 
+   if os.path.exists(validation_path):
+    validation_data = ImageFolder(root=validation_path, transform=transf, 
+                        #    is_valid_file = checkImage
+                        )
+except:
+   raise Exception("The validation path doesn't exist")
+try: 
+   if os.path.exists(test_path):
+    validation_data = ImageFolder(root=test_path, transform=transf, 
+                        #    is_valid_file = checkImage
+                        )
+except:
+   raise Exception("The test path doesn't exist")
+
 generator = th.Generator().manual_seed(42)
-train_data, val_data = th.utils.data.random_split(dataset=train_data, lengths=[.8,.2], generator=generator)
+# train_data, val_data = th.utils.data.random_split(dataset=train_data, lengths=[.8,.2], generator=generator)
 print('train:',len(train_data))
-print('val:',len(val_data))
+print('val:',len(validation_data))
 train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=True)
+val_loader = DataLoader(validation_data, batch_size=batch_size, shuffle=True)
 #########################################################
 ############ Models ##################
 if model == "efficientnetb3":
+    model_name = model
     ######## EfficientNet B3 #############
     model = tv.models.efficientnet_b3(weights='IMAGENET1K_V1')
-    print('Original model classifier:', model.classifier)
     model.classifier = nn.Sequential(
                                                 nn.Dropout(p=.2, inplace=True),
                                                 nn.Linear(in_features=1536, out_features=class_num, bias=True),
                                                 nn.Softmax(dim=1)
                                                 )
-    print('Modified models classifier:', model.classifier)
     model.to(device)
 elif model == 'mobilenetv3':
+    model_name = model
     ######## MobileNet V3 #############
     model = tv.models.mobilenet_v3_large(weights='IMAGENET1K_V1')
-    print('Original model classifier:', model.classifier)
     model.classifier = nn.Sequential(
                                                     nn.Linear(in_features=960, out_features=1280, bias=True),
                                                     nn.Hardswish(inplace=True),
@@ -107,8 +134,9 @@ elif model == 'mobilenetv3':
                                                     nn.Linear(in_features=1280, out_features=class_num, bias=True),
                                                     nn.Softmax(dim=1)
                                                 )
-    print('Modified models classifier:', model.classifier)
+    model.to(device)
 elif model == 'swin_transformer':
+    model_name = model
     ######## Swin Transformer #############
     model = tv.models.swin_t(weights='IMAGENET1K_V1')
     print('Head classifier:', model.head)
@@ -116,14 +144,18 @@ elif model == 'swin_transformer':
                                 nn.Linear(in_features=768, out_features=class_num, bias=True),
                                 nn.Softmax(dim=1)
                                             )
-    print('Modified head classifier:', model.head)
+    model.to(device)
 #######################################
 # Criterion
 loss_fn = nn.CrossEntropyLoss()
 
 # Optimizer
-optimizer = th.optim.Adam(lr=lr, params=model.parameters(), weight_decay=1e-4)
-
+if model == "swin_transformer":
+   optimizer = th.optim.AdamW(lr=lr, params=model.parameters(),
+                              betas=(.9,.999),weight_decay=1e-4)
+else:
+   optimizer = th.optim.Adam(lr=lr, params=model.parameters(), 
+                             betas=(.9,.999),weight_decay=1e-4)
 # Metric
 metric_precision = MulticlassPrecision(num_classes=class_num)
 metric_recall = MulticlassRecall(num_classes=class_num)
@@ -137,7 +169,7 @@ wandb.init(
     project="project s-mad",
     # track hyperparameters and run metadata
     config={
-            "model": model,
+            "model": model_name,
             "batch_size": batch_size,
             "learning_rate": lr,
             "epochs": epochs,
@@ -200,13 +232,4 @@ for epoch in tqdm(range(num_epochs), desc="Epoch", position=1):
         min_valid_loss = np.sum(val_losses) / len(val_losses)
         th.save(model.state_dict(), model+'_'+str(num_epochs))
 endTime = time.time()
-print("[INFO] total time taken to train the model: {:.2f}s".format(endTime - startTime))   
-
-# print('dataset path:', data_dir, '\r')
-# print('num-epochs:', num_epochs, '\r')
-# print('batch_size:', batch_size, '\r')
-# print('img_size:', img_size, '\r')
-# print('class num:', class_num, '\r')
-# print('lr:', lr, '\r')
-# print('model:', model, '\r')
-# print('augmentation:', augmentation, '\r')
+print("[INFO] total time taken to train the model: {:.2f}s".format(endTime - startTime)) 

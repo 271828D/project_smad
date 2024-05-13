@@ -33,11 +33,11 @@ train_loader = DataLoader(train_data, batch_size=32, shuffle=True)
 val_loader = DataLoader(val_data, batch_size=32, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=32, shuffle=True)
 
-x,y = next(iter(train_loader))
-print('train dim:', x.size(), y.size())
+# x,y = next(iter(train_loader))
+# print('train dim:', x.size(), y.size())
 
-x,y = next(iter(val_loader))
-print('val dim:', x.size(), y.size())
+# x,y = next(iter(val_loader))
+# print('val dim:', x.size(), y.size())
 
-x,y = next(iter(test_loader))
-print('test dim:', x.size(), y.size())
+# x,y = next(iter(test_loader))
+# print('test dim:', x.size(), y.size())

@@ -16,11 +16,16 @@ transf = v2.Compose([
                         # transforms.PILToTensor()
                             ])
 
+# 'TO DO: Data augmentation w/ Albumentations'
+
+
+
 train_data = ImageFolder(root = dataset_path, transform = transf, 
                 #    is_valid_file = checkImage
                    )
 
 generator = th.Generator().manual_seed(42)
+
 train_data, val_data = th.utils.data.random_split(dataset=train_data, lengths=[.8,.2], generator=generator)
 val_data, test_data = th.utils.data.random_split(dataset=val_data, lengths=[.5,.5], generator=generator)
 

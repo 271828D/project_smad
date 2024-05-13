@@ -23,8 +23,8 @@ import copy
 from scipy.special import erfinv
 from collections import namedtuple
 import matplotlib.pyplot as mpl
-# from matplotlib2tikz import save as tikz_save
-from tikzplotlib import save as tikz_save
+from matplotlib2tikz import save as tikz_save
+# from tikzplotlib import save as tikz_save
 import logging
 
 

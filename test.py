@@ -58,7 +58,7 @@ else:
   device = "cpu"
 #########################################################
 # TO DO: 
-# agregar wandb monitor
+# REVISAR WANDB MONITOR
 
 #########################################################
 # TO DO: 
@@ -83,34 +83,47 @@ else:
                         # transforms.PILToTensor()
                         ])
 
-try: 
-   if os.path.exists(train_path):
-    train_data = ImageFolder(root=train_path, transform=transf, 
-                        #    is_valid_file = checkImage
-                        )
-except:
-   raise Exception("The train path doesn't exist")
-try: 
-   if os.path.exists(validation_path):
-    validation_data = ImageFolder(root=validation_path, transform=transf, 
-                        #    is_valid_file = checkImage
-                        )
-except:
-   raise Exception("The validation path doesn't exist")
-try: 
-   if os.path.exists(test_path):
-    validation_data = ImageFolder(root=test_path, transform=transf, 
-                        #    is_valid_file = checkImage
-                        )
-except:
-   raise Exception("The test path doesn't exist")
+
+if os.path.exists(train_path) == False:
+   train_path = data_dir
+else:
+   train_path = os.path.join(data_dir, "train")
+   validation_path = os.path.join(data_dir, "validation")
+
+train_data = ImageFolder(root=train_path, transform=transf)
+   
+# try: 
+#    if os.path.exists(train_path):
+#     train_data = ImageFolder(root=train_path, transform=transf, 
+#                         #    is_valid_file = checkImage
+#                         )
+# except:
+#    raise Exception("The train path doesn't exist")
+# try: 
+#    if os.path.exists(validation_path):
+#     validation_data = ImageFolder(root=validation_path, transform=transf, 
+#                         #    is_valid_file = checkImage
+#                         )
+# except:
+#    raise Exception("The validation path doesn't exist")
+# try: 
+#    if os.path.exists(test_path):
+#     validation_data = ImageFolder(root=test_path, transform=transf, 
+#                         #    is_valid_file = checkImage
+#                         )
+# except:
+#    raise Exception("The test path doesn't exist")
 
 generator = th.Generator().manual_seed(42)
-# train_data, val_data = th.utils.data.random_split(dataset=train_data, lengths=[.8,.2], generator=generator)
+train_data, validation_data = th.utils.data.random_split(dataset=train_data, lengths=[.8,.2], generator=generator)
 print('train:',len(train_data))
 print('val:',len(validation_data))
-train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-val_loader = DataLoader(validation_data, batch_size=batch_size, shuffle=True)
+train_loader = DataLoader(train_data, batch_size=batch_size, 
+                             shuffle=True, num_workers=16,
+                             pin_memory=True)
+val_loader = DataLoader(validation_data, batch_size=batch_size, 
+                             shuffle=True, num_workers=16,
+                             pin_memory=True)
 #########################################################
 ############ Models ##################
 if model == "efficientnetb3":
@@ -172,7 +185,7 @@ wandb.init(
             "model": model_name,
             "batch_size": batch_size,
             "learning_rate": lr,
-            "epochs": epochs,
+            "epochs": num_epochs,
             "start_time": startTime,
     }
 )
@@ -214,13 +227,9 @@ for epoch in tqdm(range(num_epochs), desc="Epoch", position=1):
             val_loss = loss_fn(transformed, labels).to(device) # change: labels:long to labels.type('torch.FloatTensor').to(device)
             val_precision_ = metric_precision(transformed, labels)
             val_recall_ = metric_recall(transformed, labels)
-            # print('val-loss:', loss.item())
-            # val_losses.append(loss)
             val_losses = np.append(val_losses, val_loss.detach().numpy())
-            # val_precision.append(val_precision_)
-            # val_recall.append(val_recall_)
     #   Print batch information
-      print(f'\t Epoch {num_epochs+1} \t loss: {np.sum(train_losses) / len(train_losses)} \t val-loss: {np.sum(val_losses) / len(val_losses)}')
+      print(f'\t Epoch {epoch+1} \t loss: {np.sum(train_losses) / len(train_losses)} \t val-loss: {np.sum(val_losses) / len(val_losses)}')
     #   wandb tracking
       wandb.log({
     "loss": np.mean(train_losses),
@@ -230,6 +239,6 @@ for epoch in tqdm(range(num_epochs), desc="Epoch", position=1):
       if min_valid_loss > np.sum(val_losses) / len(val_losses):
         print(f'Validation Loss Decreased({min_valid_loss:.6f}--->{np.sum(val_losses) / len(val_losses):.6f}) \t Saving The Model')
         min_valid_loss = np.sum(val_losses) / len(val_losses)
-        th.save(model.state_dict(), model+'_'+str(num_epochs))
+        th.save(model.state_dict(), model_name+'_'+str(epoch)+'.pt')
 endTime = time.time()
 print("[INFO] total time taken to train the model: {:.2f}s".format(endTime - startTime)) 

@@ -69,6 +69,7 @@ try:
     test_data = ImageFolder(root=test_path, transform=transf, 
                         #    is_valid_file = checkImage
                         )
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
 except:
    raise Exception("The test path doesn't exist")
 ############ Models ##################
